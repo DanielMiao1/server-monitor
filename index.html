@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Status</title>
+		<style>
+			@import url('https://fonts.googleapis.com/css2?family=Squada+One&display=swap');
+
+			body {
+				margin: 0px;
+			}
+
+			h1,
+			h2,
+			p {
+				text-align: center;
+				font-family: "Squada One";
+				font-size: 80px;
+				letter-spacing: 3px;
+			}
+
+			h1 {
+				margin-top: 20px;
+				margin-bottom: 0px;
+			}
+
+			p {
+				font-size: 30px;
+				margin: 0px;
+			}
+
+			h2 {
+				margin-top: 40px;
+				font-size: 40px;
+			}
+
+			date {
+				padding: 0px !important;
+			}
+
+			#timezone {
+				font-family: Arial, Helvetica, sans-serif;
+			}
+
+			#timezone > button {
+				position: fixed;
+				top: 10px;
+				left: 10px;
+				padding: 10px;
+				cursor: default;
+				border-radius: 4px;
+				background-color: rgba(0, 0, 0, 0.1);
+				border: none;
+				color: black;
+				transition: 300ms;
+			}
+			
+			#timezone > button:hover {
+				background-color: rgba(0, 0, 0, 0.14);
+			}
+
+			#timezone .buttons {
+				top: 10px;
+				position: fixed;
+			}
+
+			#timezone .buttons button {
+				position: relative;
+				cursor: pointer;
+				background-color: rgba(0, 0, 0, 0.1);
+				border: none;
+				border-radius: 3px;
+				padding: 10px;
+				transition: 300ms;
+			}
+
+			#timezone .buttons button:hover {
+				background-color: rgba(0, 0, 0, 0.16);
+			}
+
+			#timezone .decrease {
+				margin-left: 5px;
+			}
+
+			#history * {
+				max-width: 700px;
+				margin: auto auto;
+				margin-top: 5px;
+				padding: 7px;
+				border-radius: 4px;
+			}
+
+			.history-on {
+				background: rgba(0, 143, 0, 0.1);
+			}
+
+			.history-off {
+				background: rgba(143, 0, 0, 0.1);
+			}
+		</style>
+	</head>
+	<body>
+		<div id="timezone">
+			<button>UTC<span>+0000</span></button>
+			<div class="buttons">
+				<button class="increase">+</button>
+				<button class="decrease">-</button>
+			</div>
+		</div>
+		<h1 id="status">Retrieving Data</h1>
+		<p id="start-time"></p>
+		<h2 id="history-label">History</h2>
+		<div id="history"></div>
+		<script>
+			function update_times() {
+				document.querySelector("#timezone > button span").innerHTML = (timezone_sign ? "+" : "-") + zfill(timezone.toString(), 4)
+				for (let element of document.getElementsByTagName("date")) {
+					time = new Date((new Date(element.innerHTML)).getTime() + ((new Date(element.innerHTML)).getTimezoneOffset() * 60000) + (3600 * timezone)).toLocaleString();
+					date = time.split(", ")[0];
+					time = time.split(", ")[1];
+					console.log(date)
+					console.log(time)
+					element.innerHTML = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][date.split("/")[0] - 1] + " " + date.split("/")[1] + ", " + date.split("/")[2] + " " + zfill((parseInt(time.split(":")[0]) + (time.split(" ")[1] == "AM" ? 0 : 12)).toString(), 2) + ":" + time.split(":")[1] + ":" + time.split(":")[2].split(" ")[0]
+				}
+			}
+
+			function zfill(string, length) {
+				if (string.length >= length) {
+					return string;
+				};
+				let new_string = "";
+				for (let index of Array(length - string.length)) {
+					new_string += "0";
+				};
+				return new_string + string;
+			};
+
+			var timezone = 0;
+			var timezone_sign = 1;
+			if (localStorage.timezone) {
+				for (let character of localStorage.timezone) {
+					if (![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].includes(parseInt(character))) {
+						localStorage.timezone = 0;
+						break;
+					};
+				};
+				if (parseInt(localStorage.timezone) > 1400 || parseInt(localStorage.timezone) < -1100) {
+					localStorage.timezone = 0;
+				};
+				timezone = parseInt(localStorage.timezone);
+			} else {
+				localStorage.timezone = timezone;
+			};
+
+			if (localStorage.timezone_sign) {
+				if ([0, 1].includes(parseInt(localStorage.timezone_sign))) {
+					timezone_sign = parseInt(localStorage.timezone_sign);
+				} else {
+					localStorage.timezone_sign = timezone_sign;
+				};
+			} else {
+				localStorage.timezone_sign = timezone_sign;
+			};
+
+			document.querySelector("#timezone > button span").innerHTML = (timezone_sign ? "+" : "-") + zfill(timezone.toString(), 4);
+
+			window.onresize = (function() {
+				document.querySelector("#timezone .buttons").style.left = (document.querySelector("#timezone > button").clientWidth + 20) + "px";
+				return (function() {
+					document.querySelector("#timezone .buttons").style.left = (document.querySelector("#timezone > button").clientWidth + 20) + "px";
+				});
+			})();
+
+			document.querySelector("#timezone .buttons .increase").addEventListener("click", function() {
+				timezone += 30;
+				localStorage.timezone = timezone;
+				update_times()
+			});
+
+			document.querySelector("#timezone .buttons .decrease").addEventListener("click", function() {
+				timezone -= 30;
+				localStorage.timezone = timezone;
+				update_times()
+			});
+
+			var data;
+			var online = 0;
+			function update() {
+				try {
+					fetch(new URL("http://76.20.40.178:25565/history.txt"), {"method": "GET", "cache": "no-store"}).catch(function(error) {
+						return {response: {ok: false}};
+					}).then(function(response) {
+						if (response.ok) {
+							return response.text();
+						} else {
+							console.log(`Server responded with error ${response.status} (${response.statusText})`);
+							online = 0;
+							update_status_text();
+							online = null;
+						};
+					}).then(function(text) {
+						if (online == null) {
+							online = 0;
+							return;
+						};
+						data = text;
+						if (parseInt(data.split("\n").slice(-1)[0][0])) {
+							online = 2;
+						} else {
+							online = 1;
+						};
+						update_status_text();
+						while (document.getElementById("history").firstChild) {
+							document.getElementById("history").removeChild(document.getElementById("history").firstChild)
+						}
+						let element;
+						for (let x of data.split("\n")) {
+							element = document.createElement("p");
+							element.innerHTML = "Server was turned " + ["off ", "on "][parseInt(x[0])] + "<date>" + format_time(x.slice(1)) + "</date>";
+							element.classList.add("history-" + ["off", "on"][parseInt(x[0])])
+							document.getElementById("history").appendChild(element);
+						};
+						update_times();
+					});
+				} catch (err) {
+					console.log(err);
+				};
+			};
+			update();
+			setInterval(update, 5000);
+
+			function update_status_text() {
+				if (online == 0) {
+					document.body.style.background = "#f55";
+					document.getElementById("status").innerHTML = "Server host is down";
+					document.getElementById("history").style.display = "none";
+					document.getElementById("history-label").style.display = "none";
+					return;
+				};
+				switch (online) {
+					case 1:
+						document.body.style.background = "yellow";
+						document.getElementById("status").innerHTML = "Server is offline";
+						break;
+					case 2:
+						document.body.style.background = "limegreen";
+						document.getElementById("status").innerHTML = "Server is online";
+						break;
+				};
+				document.getElementById("start-time").innerHTML = `Since <date>${format_time(data.split("\n").slice(-1)[0].slice(1))}</date>`;
+				document.getElementById("history").style.display = "block";
+				document.getElementById("history-label").style.display = "block";
+			};
+
+			function format_time(time) {
+				return `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][parseInt(time.slice(4, 6)) - 1]} ${time.slice(6, 8)}, ${time.slice(0, 4)} ${time.slice(8, 10)}:${time.slice(10, 12)}:${time.slice(12, 14)} UTC`
+			};
+		</script>
+	</body>
+</html>
