@@ -38,50 +38,6 @@
 				padding: 0px !important;
 			}
 
-			#timezone {
-				font-family: Arial, Helvetica, sans-serif;
-			}
-
-			#timezone > button {
-				position: fixed;
-				top: 10px;
-				left: 10px;
-				padding: 10px;
-				cursor: default;
-				border-radius: 4px;
-				background-color: rgba(0, 0, 0, 0.1);
-				border: none;
-				color: black;
-				transition: 300ms;
-			}
-			
-			#timezone > button:hover {
-				background-color: rgba(0, 0, 0, 0.14);
-			}
-
-			#timezone .buttons {
-				top: 10px;
-				position: fixed;
-			}
-
-			#timezone .buttons button {
-				position: relative;
-				cursor: pointer;
-				background-color: rgba(0, 0, 0, 0.1);
-				border: none;
-				border-radius: 3px;
-				padding: 10px;
-				transition: 300ms;
-			}
-
-			#timezone .buttons button:hover {
-				background-color: rgba(0, 0, 0, 0.16);
-			}
-
-			#timezone .decrease {
-				margin-left: 5px;
-			}
-
 			#history * {
 				max-width: 700px;
 				margin: auto auto;
@@ -100,31 +56,15 @@
 		</style>
 	</head>
 	<body>
-		<div id="timezone">
-			<button>UTC<span>+0000</span></button>
-			<div class="buttons">
-				<button class="increase">+</button>
-				<button class="decrease">-</button>
-			</div>
-		</div>
 		<h1 id="status">Retrieving Data</h1>
 		<p id="start-time"></p>
 		<h2 id="history-label">History</h2>
 		<div id="history"></div>
 		<script>
-			function update_times() {
-				document.querySelector("#timezone > button span").innerHTML = (timezone_sign ? "+" : "-") + zfill(timezone.toString(), 4)
-				for (let element of document.getElementsByTagName("date")) {
-					time = new Date((new Date(element.innerHTML)).getTime() + ((new Date(element.innerHTML)).getTimezoneOffset() * 60000) + (3600 * timezone)).toLocaleString();
-					date = time.split(", ")[0];
-					time = time.split(", ")[1];
-					console.log(date)
-					console.log(time)
-					element.innerHTML = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][date.split("/")[0] - 1] + " " + date.split("/")[1] + ", " + date.split("/")[2] + " " + zfill((parseInt(time.split(":")[0]) + (time.split(" ")[1] == "AM" ? 0 : 12)).toString(), 2) + ":" + time.split(":")[1] + ":" + time.split(":")[2].split(" ")[0]
-				}
-			}
-
 			function zfill(string, length) {
+				if (typeof string != "string") {
+					string = string.toString();
+				};
 				if (string.length >= length) {
 					return string;
 				};
@@ -134,54 +74,6 @@
 				};
 				return new_string + string;
 			};
-
-			var timezone = 0;
-			var timezone_sign = 1;
-			if (localStorage.timezone) {
-				for (let character of localStorage.timezone) {
-					if (![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].includes(parseInt(character))) {
-						localStorage.timezone = 0;
-						break;
-					};
-				};
-				if (parseInt(localStorage.timezone) > 1400 || parseInt(localStorage.timezone) < -1100) {
-					localStorage.timezone = 0;
-				};
-				timezone = parseInt(localStorage.timezone);
-			} else {
-				localStorage.timezone = timezone;
-			};
-
-			if (localStorage.timezone_sign) {
-				if ([0, 1].includes(parseInt(localStorage.timezone_sign))) {
-					timezone_sign = parseInt(localStorage.timezone_sign);
-				} else {
-					localStorage.timezone_sign = timezone_sign;
-				};
-			} else {
-				localStorage.timezone_sign = timezone_sign;
-			};
-
-			document.querySelector("#timezone > button span").innerHTML = (timezone_sign ? "+" : "-") + zfill(timezone.toString(), 4);
-
-			window.onresize = (function() {
-				document.querySelector("#timezone .buttons").style.left = (document.querySelector("#timezone > button").clientWidth + 20) + "px";
-				return (function() {
-					document.querySelector("#timezone .buttons").style.left = (document.querySelector("#timezone > button").clientWidth + 20) + "px";
-				});
-			})();
-
-			document.querySelector("#timezone .buttons .increase").addEventListener("click", function() {
-				timezone += 30;
-				localStorage.timezone = timezone;
-				update_times()
-			});
-
-			document.querySelector("#timezone .buttons .decrease").addEventListener("click", function() {
-				timezone -= 30;
-				localStorage.timezone = timezone;
-				update_times()
-			});
 
 			var data;
 			var online = 0;
@@ -220,7 +112,6 @@
 							element.classList.add("history-" + ["off", "on"][parseInt(x[0])])
 							document.getElementById("history").appendChild(element);
 						};
-						update_times();
 					});
 				} catch (err) {
 					console.log(err);
@@ -253,7 +144,8 @@
 			};
 
 			function format_time(time) {
-				return `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][parseInt(time.slice(4, 6)) - 1]} ${time.slice(6, 8)}, ${time.slice(0, 4)} ${time.slice(8, 10)}:${time.slice(10, 12)}:${time.slice(12, 14)} UTC`
+				let date = new Date(`${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][parseInt(time.slice(4, 6)) - 1]} ${time.slice(6, 8)}, ${time.slice(0, 4)} ${time.slice(8, 10)}:${time.slice(10, 12)}:${time.slice(12, 14)} UTC`);
+				return ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][date.getMonth()] + " " + zfill(date.getDate(), 2) + ", " + date.getFullYear() + " " + zfill(date.getHours(), 2) + ":" + zfill(date.getMinutes(), 2) + ":" + zfill(date.getSeconds(), 2)
 			};
 		</script>
 	</body>
